@@ -1,13 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Animations;
+using Photon.Pun;
 
-public class PlayerFire : MonoBehaviour
+public class PlayerFire : MonoBehaviourPun
 {
     public Transform[] sockets;
     public WeaponInfo myWeapon;
-
     public Animator anim;
 
     void Start()
@@ -24,10 +23,9 @@ public class PlayerFire : MonoBehaviour
             Fire();
         }
 
-        if(Input.GetKeyDown(KeyCode.F) && myWeapon.weaponType != WeaponType.None)
+        if(photonView.IsMine&&Input.GetKeyDown(KeyCode.F) && myWeapon.weaponType != WeaponType.None)
         {
-             DropMyWeapon();
-
+             RPC_DropWeapon();
         }
 
     }
@@ -60,29 +58,43 @@ public class PlayerFire : MonoBehaviour
 
 
     }
-
-    void DropMyWeapon()
+    void RPC_DropWeapon()
     {
-        // 나의 무기에 있는 WeaponData 컴포넌트의 DropWeapon 함수를 실행한다.
-        WeaponData data=sockets[(int)myWeapon.weaponType].GetChild(0).GetComponent<WeaponData>();
-        if (data != null)
+        //나의 무기에 있는 WeaponData 컴포넌트의 DropWeapon 함수를 실행한다.
+        WeaponData data = sockets[(int)myWeapon.weaponType].GetChild(0).GetComponent<WeaponData>();
+        if(data != null)
         {
             data.DropWeapon(myWeapon);
-
-            // 무기 상태(myWeapon 변수)를 초기화한다.
-            myWeapon = new WeaponInfo();
-            UIManager.main_ui.SetWeaponInfo(myWeapon);
-            if(myWeapon.weaponType == WeaponType.PistolType)
-            {
-                anim.SetBool("GetPistol", false);
-                anim.SetBool("GetRifle", false);
-            }
         }
-
+        photonView.RPC("DRropWeapon", RpcTarget.All);
+    }
+    [PunRPC]
+    void DropMyWeapon()
+    {
+       // 무기 상태(myWeapon 변수)를 초기화한다.
+       myWeapon = new WeaponInfo();
+       UIManager.main_ui.SetWeaponInfo(myWeapon);
+       
+       anim.SetBool("GetPistol", false);
+       anim.SetBool("GetRifle", false);
 
     }
-    public void GetWeapon()
+    public void RPC_GetWeapon(int ammo, float atkPower, float range, int weaponType)
     {
+        photonView.RPC("GetWeapon", RpcTarget.All, ammo, atkPower, range, weaponType);
+    }
+
+    [PunRPC]
+    public void GetWeapon(int ammo, float atkPower, float range, int weaponType)
+    {
+        // 플레이어의 지정된 소켓 위치에 총을 부착시킨다.
+        // - 자신을 소켓의 자식 오브젝트로 등록하고
+        // - 로컬 포지션을 (0, 0, 0)으로 맞춘다.
+        // - 자신의 박스 컴포넌트를 비활성화한다.
+        // - 무기 정보를 플레이어에게 전달한다.
+
+        myWeapon.SetInformation(ammo,atkPower,range,(WeaponType)weaponType);
+
         UIManager.main_ui.SetWeaponInfo(myWeapon);
         if (myWeapon.weaponType == WeaponType.PistolType)
         {

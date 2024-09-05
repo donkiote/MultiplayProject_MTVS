@@ -17,4 +17,13 @@ public class WeaponInfo
     public float attakPower;
     public float range;
     public WeaponType weaponType;
+
+    public void SetInformation(int ammo, float atkPower, float range, WeaponType type)
+    {
+        this.ammo = ammo;
+        attakPower = atkPower;
+        this.range = range;
+        weaponType = type;
+
+    }
 }

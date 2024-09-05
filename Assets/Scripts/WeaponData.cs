@@ -1,38 +1,41 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-public class WeaponData : MonoBehaviour
+[RequireComponent(typeof(PhotonView))]
+public class WeaponData : MonoBehaviourPun, IPunObservable
 {
     public WeaponInfo weaponInfo;
     Coroutine weaponCoroutine;
-    void Start()
-    {
-        
-    }
+    Vector3 syncPos;
+    Quaternion syncRot;
 
-    void Update()
+    private void Update()
     {
-        
+        if (!photonView.IsMine)
+        {
+            transform.position = syncPos;
+            transform.rotation = syncRot;
+        }
     }
-
     private void OnTriggerEnter(Collider other)
     {
-        // 충돌한 대상의 Layer가 Player라면...
-        if (other.gameObject.layer == LayerMask.NameToLayer("Player"))
+        // 충돌한 대상의 Layer가 Player이면서, 그 플레이어의 PhotonView가 isMine라면...
+        PhotonView pv = other.GetComponent<PhotonView>();
+        if (other.gameObject.layer == LayerMask.NameToLayer("Player")&&pv !=null&&pv.IsMine)
         {
             PlayerFire pf = other.transform.GetComponent<PlayerFire>();
-            // 플레이어의 지정된 소켓 위치에 총을 부착시킨다.
-            transform.parent =pf.sockets[(int)weaponInfo.weaponType].transform;
+            transform.parent = pf.sockets[(int)weaponInfo.weaponType].transform;
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
             transform.GetComponent<BoxCollider>().enabled = false;
-            pf.myWeapon = weaponInfo;
-            pf.GetWeapon();
-            // - 자신을 소켓의 자식 오브젝트로 등록하고
-            // - 로컬 포지션을 (0, 0, 0)으로 맞춘다.
-            // - 자신의 박스 컴포넌트를 비활성화한다.
-            // - 무기 정보를 플레이어에게 전달한다.
+            photonView.TransferOwnership(pv.ViewID);
+            // 플레이어의 지정된 소켓 위치에 총을 부착시킨다.
+
+            //RPC 함수를 호출하도록 요청한다.
+            pf.RPC_GetWeapon(weaponInfo.ammo, weaponInfo.attakPower, weaponInfo.range,(int)weaponInfo.weaponType);
+            
         }
 
 
@@ -49,8 +52,6 @@ public class WeaponData : MonoBehaviour
         {
             weaponCoroutine = StartCoroutine(TriggerOn(3));
         }
-        
-        
         transform.eulerAngles = Vector3.zero;
         weaponInfo = currentInfo;
     }
@@ -59,5 +60,19 @@ public class WeaponData : MonoBehaviour
         yield return new WaitForSeconds(time);
         transform.GetComponent<BoxCollider>().enabled = true;
         weaponCoroutine = null;
+    }
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            stream.SendNext(transform.position);
+            stream.SendNext(transform.rotation);
+
+        }
+        else if(stream.IsReading)
+        {
+            syncPos = (Vector3)stream.ReceiveNext();
+            syncRot = (Quaternion)stream.ReceiveNext();
+        }
     }
 }

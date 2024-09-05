@@ -268,7 +268,7 @@ MonoBehaviour:
   moveSpeed: 7
   rotSpeed: 300
   maxHealth: 100
-  trackingSpeed: 3
+  trackingSpeed: 30
 --- !u!114 &5918709056228022369
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -308,7 +308,8 @@ MonoBehaviour:
   Synchronization: 3
   OwnershipTransfer: 0
   observableSearch: 2
-  ObservedComponents: []
+  ObservedComponents:
+  - {fileID: 5530005115413984344}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
