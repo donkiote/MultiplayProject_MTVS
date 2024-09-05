@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class CameraController : MonoBehaviour
 {
@@ -25,10 +26,15 @@ public class CameraController : MonoBehaviour
         Vector3 camDir = farOffset.normalized * distance;
         maxLocalPos = minLocalPos + camDir;
 
+        //만일, 이 캐릭터가 캐릭터의 소유권자라면...
         // 메인 카메라의 CameraFollow 컴포넌트에서 follow Target과 LookAt Target을 모두 farPos로 지정한다.
-        followCam = Camera.main.transform.GetComponent<CameraFollow>();
-        followCam.SetCameraFollowTarget(basePositions[1]);
-        followCam.SetCameraLookAtTarget(basePositions[1]);
+        if (GetComponent<PhotonView>().IsMine)
+        {
+            followCam = Camera.main.transform.GetComponent<CameraFollow>();
+            followCam.SetCameraFollowTarget(basePositions[1]);
+            followCam.SetCameraLookAtTarget(basePositions[1]);
+        }
+        
 
         basePositions[0].localPosition = minLocalPos;
     }
