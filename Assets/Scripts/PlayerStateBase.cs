@@ -9,12 +9,14 @@ public class PlayerStateBase : MonoBehaviour
     public float maxHealth = 100;
 
     protected float currentHealth = 0;
-
-
-    void Start()
+    protected enum PlayerState
     {
-        
+        NONE,
+        READY,
+        RUN,
+        DIE
     }
+    protected PlayerState playerState = PlayerState.READY;
 
    
 }

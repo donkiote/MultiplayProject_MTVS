@@ -53,6 +53,21 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         Debug.LogError("Disconnected from Server - " + cause);
         LobbyUIController.lobbyUI.btn_login.interactable = true;
     }
+    public override void OnConnected()
+    {
+        base.OnConnected();
+
+        // 네임 서버에 접속이 완료되었음을 알려준다.
+        print(MethodInfo.GetCurrentMethod().Name + " is Call!");
+    }
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        base.OnDisconnected(cause);
+        // 실패 원인을 출력한다.
+        Debug.LogError("Disconnected from Server - " + cause);
+        LobbyUIController.lobbyUI.btn_login.interactable = true;
+    }
+
     public override void OnConnectedToMaster()
     {
         base.OnConnectedToMaster();

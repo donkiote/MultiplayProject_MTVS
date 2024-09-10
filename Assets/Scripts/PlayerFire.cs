@@ -9,11 +9,22 @@ public class PlayerFire : MonoBehaviourPun
     public WeaponInfo myWeapon;
     public Animator anim;
 
+    PlayerUI playerUI;
+
     void Start()
     {
         myWeapon.weaponType = WeaponType.None;
         //UI갱신
         UIManager.main_ui.SetWeaponInfo(myWeapon);
+
+        playerUI = GetComponentInChildren<PlayerUI>();
+        //생성한 플레이어의 닉네임과 컬러를 입력한다.(나: 녹색, 상대방:적색)
+        Color nameColor = photonView.IsMine ? new Color(0, 1, 0) : new Color(1, 0, 0);
+        playerUI.SetNickName(photonView.Owner.NickName, nameColor);
+
+        //생성한 플레이어의 체력 바의 색상을 입력한다..(나: 녹색, 상대방:적색)
+        Color healthColor = photonView.IsMine ? new Color(0, 1, 0) : new Color(1, 0.2f, 0);
+        playerUI.SetHpColor(healthColor);
     }
 
     void Update()
@@ -43,6 +54,8 @@ public class PlayerFire : MonoBehaviourPun
             if (hitInfo.collider.gameObject.layer == LayerMask.NameToLayer("Enemy"))
             {
                 // 데미지 처리를 한다.
+                hitInfo.transform.GetComponent<IInteractionInterface>().RPC_TakeDamage
+                    (myWeapon.attakPower, photonView.ViewID);
             }
             // 그렇지 않다면, 닿은 위치에 파편 이펙트를 출력한다.
             else

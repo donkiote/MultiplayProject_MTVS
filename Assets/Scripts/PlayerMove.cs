@@ -1,13 +1,16 @@
 using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.UIElements;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
-public class PlayerMove : PlayerStateBase, IPunObservable
+public class PlayerMove : PlayerStateBase, IPunObservable, IInteractionInterface
 {
     public float trackingSpeed = 30;
-    
+    public PlayerUI healthUI;
+    public Vector3 shakePower;
 
     Transform cam;
     CharacterController cc;
@@ -16,6 +19,7 @@ public class PlayerMove : PlayerStateBase, IPunObservable
     Vector3 myPos;
     Quaternion myRot;
     Vector3 myPrevPos;
+    bool isShaking = false;
 
     float mx = 0;
     //float h, v = 0;
@@ -28,12 +32,31 @@ public class PlayerMove : PlayerStateBase, IPunObservable
         myAnim = GetComponentInChildren<Animator>();
         pv = GetComponent<PhotonView>();
         myPrevPos = transform.position;
+
+        //현재 체력을 초기화한다.
+        currentHealth = maxHealth;
+
+        //레이어를 변경한다.
+        gameObject.layer = pv.IsMine ? LayerMask.NameToLayer("Player") : LayerMask.NameToLayer("Enemy");
+
+        playerState = PlayerState.RUN;
+
     }
 
     void Update()
     {
-        Move();
-        Rotate();
+        if (playerState == PlayerState.RUN)
+        {
+            Move();
+            Rotate();
+        }
+        #region 디버깅용
+        //if(Input.GetKeyDown(KeyCode.I))
+        //{
+        //    StartCoroutine(ShakeCamera(5, 20, 0.3f));
+        //}
+        #endregion
+
     }
 
     void Move()
@@ -138,4 +161,90 @@ public class PlayerMove : PlayerStateBase, IPunObservable
 
     }
 
+    public void RPC_TakeDamage(float dmg, int viewID)
+    {
+        pv.RPC("TakeDamage", RpcTarget.All, dmg, viewID);
+    }
+
+    [PunRPC]
+    public void TakeDamage(float dmg, int viewID)
+    {
+        if (playerState != PlayerState.RUN)
+        {
+            return;
+        }
+
+        currentHealth = Mathf.Max(currentHealth - dmg, 0);
+        healthUI.SetHPValue(currentHealth, maxHealth);
+
+        if (currentHealth > 0)
+        {
+            // 피격 효과 처리
+            // 카메라를 흔드는 효과를 준다.
+            if (!isShaking && pv.IsMine)
+            {
+                StartCoroutine(ShakeCamera(5, 20, 0.3f));
+            }
+
+        }
+        else
+        {
+            // 죽음 처리
+            DieProcess();
+        }
+    }
+    IEnumerator ShakeCamera(float amplitude, float frequency, float duration)
+    {
+        isShaking = true;
+        CameraFollow camFollow = Camera.main.transform.GetComponent<CameraFollow>();
+        if (camFollow != null)
+        {
+            camFollow.isShaking = true;
+        }
+
+        // duration만큼 Perlin Noise의 값을 가져와서 그 값만큼 x축과 y축을 회전시킨다.
+        float currentTime = 0;
+        float delayTime = 1.0f / frequency;
+        Quaternion originRot = Camera.main.transform.localRotation;
+
+        while (currentTime < duration)
+        {
+            float range1 = Mathf.PerlinNoise1D(currentTime) - 0.5f;
+            float range2 = Mathf.PerlinNoise1D(duration - currentTime) - 0.5f;
+            float xRot = range1 * shakePower.x * amplitude;
+            float yRot = range2 * shakePower.y * amplitude;
+
+            Camera.main.transform.Rotate(xRot, yRot, 0);
+
+            yield return new WaitForSeconds(delayTime);
+            currentTime += delayTime;
+        }
+
+        Camera.main.transform.localRotation = originRot;
+        isShaking = false;
+        if (camFollow != null)
+        {
+            camFollow.isShaking = false;
+        }
+    }
+
+    void DieProcess()
+    {
+        if (pv.IsMine)
+        {
+            // 화면을 흑백으로 처리한다.
+            Volume currentVolume = FindObjectOfType<Volume>();
+            ColorAdjustments postColor;
+            currentVolume.profile.TryGet<ColorAdjustments>(out postColor);
+            postColor.saturation.value = -10000;
+        }
+
+        // 죽음 애니메이션을 실행한다.
+        myAnim.SetTrigger("Die");
+        // capsule Collider를 비활성화한다.
+        GetComponent<CapsuleCollider>().enabled = false;
+        // 움직임을 죽음 상태로 전환한다.
+        playerState = PlayerState.DIE;
+        // 애니메이션이 끝나면 플레이어를 제거한다.
+    }
 }

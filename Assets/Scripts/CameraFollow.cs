@@ -8,6 +8,7 @@ public class CameraFollow : MonoBehaviour
     public Transform lookAtTarget;
     public bool hasDelay = false;
     public float delaySpeed = 3.0f;
+    public bool isShaking = false;
 
     void Start()
     {
@@ -33,7 +34,7 @@ public class CameraFollow : MonoBehaviour
             }
         }
         // 만일, LookAt Target이 있다면...
-        if (lookAtTarget != null)
+        if (lookAtTarget != null&&!isShaking)
         {
             // 해당 타겟을 항상 바라보도록 회전한다.
             //Vector3 dir = lookAtTarget.position - transform.position;
